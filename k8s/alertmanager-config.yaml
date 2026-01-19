@@ -106,7 +106,6 @@ spec:
       emailConfigs:
         - to: 'ops-team@yourdomain.com'
           sendResolved: true
-          subject: 'Alert: {{ .GroupLabels.alertname }}'
           smarthost: 'smtp.gmail.com:587'
           authUsername: 'your-email@gmail.com'
           authPassword:
@@ -126,7 +125,6 @@ spec:
       emailConfigs:
         - to: 'ops-critical@yourdomain.com'
           sendResolved: true
-          subject: 'CRITICAL Alert: {{ .GroupLabels.alertname }}'
           smarthost: 'smtp.gmail.com:587'
           authUsername: 'your-email@gmail.com'
           authPassword:
@@ -138,7 +136,6 @@ spec:
       emailConfigs:
         - to: 'ops-warning@yourdomain.com'
           sendResolved: true
-          subject: 'Warning Alert: {{ .GroupLabels.alertname }}'
           smarthost: 'smtp.gmail.com:587'
           authUsername: 'your-email@gmail.com'
           authPassword:
