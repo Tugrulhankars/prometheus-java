@@ -106,8 +106,7 @@ spec:
       emailConfigs:
         - to: 'ops-team@yourdomain.com'
           sendResolved: true
-          headers:
-            Subject: 'Alert: {{ .GroupLabels.alertname }}'
+          subject: 'Alert: {{ .GroupLabels.alertname }}'
           smarthost: 'smtp.gmail.com:587'
           authUsername: 'your-email@gmail.com'
           authPassword:
@@ -122,13 +121,12 @@ spec:
             key: slack-webhook-url
           channel: '#alerts-critical'
           sendResolved: true
-          title: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+          title: 'CRITICAL: {{ .GroupLabels.alertname }}'
           text: '{{ range .Alerts }}*{{ .Labels.alertname }}*: {{ .Annotations.description }}{{ end }}'
       emailConfigs:
         - to: 'ops-critical@yourdomain.com'
           sendResolved: true
-          headers:
-            Subject: '🚨 CRITICAL Alert: {{ .GroupLabels.alertname }}'
+          subject: 'CRITICAL Alert: {{ .GroupLabels.alertname }}'
           smarthost: 'smtp.gmail.com:587'
           authUsername: 'your-email@gmail.com'
           authPassword:
@@ -140,8 +138,7 @@ spec:
       emailConfigs:
         - to: 'ops-warning@yourdomain.com'
           sendResolved: true
-          headers:
-            Subject: '⚠️ Warning Alert: {{ .GroupLabels.alertname }}'
+          subject: 'Warning Alert: {{ .GroupLabels.alertname }}'
           smarthost: 'smtp.gmail.com:587'
           authUsername: 'your-email@gmail.com'
           authPassword:
@@ -154,6 +151,6 @@ spec:
             key: slack-webhook-url
           channel: '#alerts-warning'
           sendResolved: true
-          title: '⚠️ WARNING: {{ .GroupLabels.alertname }}'
+          title: 'WARNING: {{ .GroupLabels.alertname }}'
           text: '{{ range .Alerts }}*{{ .Labels.alertname }}*: {{ .Annotations.description }}{{ end }}'
 
