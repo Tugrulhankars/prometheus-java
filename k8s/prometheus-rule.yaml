@@ -1,0 +1,157 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: spring-boot-prometheus-app-alerts
+  namespace: default
+  labels:
+    app: spring-boot-prometheus-app
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+  - name: spring-boot-app.rules
+    interval: 30s
+    rules:
+    # High Error Rate Alert
+    - alert: HighErrorRate
+      expr: |
+        sum(rate(http_server_requests_seconds_count{application="spring-boot-prometheus-app",status=~"5.."}[5m])) by (instance, pod)
+        /
+        sum(rate(http_server_requests_seconds_count{application="spring-boot-prometheus-app"}[5m])) by (instance, pod)
+        > 0.05
+      for: 5m
+      labels:
+        severity: critical
+        service: spring-boot-prometheus-app
+        team: backend
+      annotations:
+        summary: "High error rate detected in {{ $labels.instance }}"
+        description: "Error rate is {{ $value | humanizePercentage }} for pod {{ $labels.pod }} (threshold: 5%)"
+        runbook_url: "https://runbooks.example.com/high-error-rate"
+
+    # Slow Response Time Alert
+    - alert: SlowResponseTime
+      expr: |
+        histogram_quantile(0.95, 
+          sum(rate(http_server_requests_seconds_bucket{application="spring-boot-prometheus-app"}[5m])) by (le, instance, pod)
+        ) > 1
+      for: 10m
+      labels:
+        severity: warning
+        service: spring-boot-prometheus-app
+        team: backend
+      annotations:
+        summary: "Slow response time detected in {{ $labels.instance }}"
+        description: "95th percentile response time is {{ $value }}s for pod {{ $labels.pod }} (threshold: 1s)"
+        runbook_url: "https://runbooks.example.com/slow-response-time"
+
+    # Application Down Alert
+    - alert: ApplicationDown
+      expr: up{job="spring-boot-prometheus-app"} == 0
+      for: 2m
+      labels:
+        severity: critical
+        service: spring-boot-prometheus-app
+        team: backend
+      annotations:
+        summary: "Application {{ $labels.instance }} is down"
+        description: "The application {{ $labels.instance }} has been down for more than 2 minutes"
+        runbook_url: "https://runbooks.example.com/application-down"
+
+    # High Memory Usage Alert
+    - alert: HighMemoryUsage
+      expr: |
+        (jvm_memory_used_bytes{application="spring-boot-prometheus-app", area="heap"} / 
+         jvm_memory_max_bytes{application="spring-boot-prometheus-app", area="heap"}) > 0.85
+      for: 5m
+      labels:
+        severity: warning
+        service: spring-boot-prometheus-app
+        team: backend
+      annotations:
+        summary: "High memory usage in {{ $labels.instance }}"
+        description: "Memory usage is {{ $value | humanizePercentage }} for pod {{ $labels.pod }} (threshold: 85%)"
+
+    # High CPU Usage Alert
+    - alert: HighCPUUsage
+      expr: |
+        process_cpu_usage{application="spring-boot-prometheus-app"} > 0.80
+      for: 10m
+      labels:
+        severity: warning
+        service: spring-boot-prometheus-app
+        team: backend
+      annotations:
+        summary: "High CPU usage in {{ $labels.instance }}"
+        description: "CPU usage is {{ $value | humanizePercentage }} for pod {{ $labels.pod }} (threshold: 80%)"
+
+    # Request Rate Too High Alert
+    - alert: HighRequestRate
+      expr: |
+        sum(rate(http_server_requests_seconds_count{application="spring-boot-prometheus-app"}[5m])) by (instance, pod) > 100
+      for: 5m
+      labels:
+        severity: info
+        service: spring-boot-prometheus-app
+        team: backend
+      annotations:
+        summary: "High request rate in {{ $labels.instance }}"
+        description: "Request rate is {{ $value }} req/s for pod {{ $labels.pod }} (threshold: 100 req/s)"
+
+    # Database Connection Pool Exhausted (if applicable)
+    - alert: ConnectionPoolExhausted
+      expr: |
+        hikari_connections_active{application="spring-boot-prometheus-app"} / 
+        hikari_connections_max{application="spring-boot-prometheus-app"} > 0.9
+      for: 5m
+      labels:
+        severity: warning
+        service: spring-boot-prometheus-app
+        team: backend
+      annotations:
+        summary: "Connection pool nearly exhausted in {{ $labels.instance }}"
+        description: "Connection pool usage is {{ $value | humanizePercentage }} for pod {{ $labels.pod }}"
+
+    # JVM Garbage Collection Duration Alert
+    - alert: LongGarbageCollection
+      expr: |
+        rate(jvm_gc_pause_seconds_sum{application="spring-boot-prometheus-app"}[5m]) > 0.1
+      for: 10m
+      labels:
+        severity: warning
+        service: spring-boot-prometheus-app
+        team: backend
+      annotations:
+        summary: "Long garbage collection pauses in {{ $labels.instance }}"
+        description: "GC pause rate is {{ $value }}s/s for pod {{ $labels.pod }}"
+
+    # Business Metric: Low Processed Items
+    - alert: LowProcessedItems
+      expr: |
+        increase(business_items_processed{application="spring-boot-prometheus-app"}[15m]) < 10
+      for: 15m
+      labels:
+        severity: warning
+        service: spring-boot-prometheus-app
+        team: backend
+      annotations:
+        summary: "Low processed items rate in {{ $labels.instance }}"
+        description: "Only {{ $value }} items processed in the last 15 minutes"
+
+  - name: spring-boot-app.availability
+    interval: 30s
+    rules:
+    # Service Availability Alert
+    - alert: ServiceAvailabilityLow
+      expr: |
+        (sum(rate(http_server_requests_seconds_count{application="spring-boot-prometheus-app",status=~"2.."}[5m])) / 
+         sum(rate(http_server_requests_seconds_count{application="spring-boot-prometheus-app"}[5m]))) < 0.95
+      for: 10m
+      labels:
+        severity: critical
+        service: spring-boot-prometheus-app
+        team: backend
+      annotations:
+        summary: "Service availability below threshold"
+        description: "Service availability is {{ $value | humanizePercentage }} (threshold: 95%)"
+

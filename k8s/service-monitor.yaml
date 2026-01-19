@@ -1,0 +1,30 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: spring-boot-prometheus-app
+  namespace: default
+  labels:
+    app: spring-boot-prometheus-app
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: spring-boot-prometheus-app
+  endpoints:
+  - port: http
+    path: /actuator/prometheus
+    interval: 15s
+    scrapeTimeout: 10s
+    scheme: http
+    honorLabels: true
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_node_name]
+      targetLabel: node
+  namespaceSelector:
+    matchNames:
+    - default
+

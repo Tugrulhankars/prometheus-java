@@ -1,0 +1,169 @@
+global:
+  resolve_timeout: 5m
+  # SMTP Ayarları - Gmail örneği
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'alertmanager@yourdomain.com'
+  smtp_auth_username: 'your-email@gmail.com'
+  smtp_auth_password: 'your-app-password'
+  smtp_require_tls: true
+  # Slack webhook URL'i
+  slack_api_url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
+
+# Alert yönlendirme kuralları
+route:
+  receiver: 'default'
+  group_by: ['alertname', 'cluster', 'service', 'severity']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  routes:
+    # Critical alertler -> Slack ve Email
+    - receiver: 'critical-alerts'
+      continue: false
+      matchers:
+        - severity=~critical
+      group_wait: 10s
+      group_interval: 5m
+      repeat_interval: 3h
+    # Warning alertler -> Email
+    - receiver: 'warning-alerts'
+      continue: false
+      matchers:
+        - severity=~warning
+      group_wait: 30s
+      group_interval: 10m
+      repeat_interval: 6h
+    # Info alertler -> Sadece Slack (opsiyonel)
+    - receiver: 'info-alerts'
+      continue: false
+      matchers:
+        - severity=~info
+      group_wait: 1m
+      group_interval: 30m
+      repeat_interval: 24h
+
+# Alert alıcıları (receivers)
+receivers:
+  - name: 'default'
+    email_configs:
+      - to: 'ops-team@yourdomain.com'
+        send_resolved: true
+        headers:
+          Subject: 'Alert: {{ .GroupLabels.alertname }}'
+        html: |
+          <h2>Alert: {{ .GroupLabels.alertname }}</h2>
+          <p><strong>Status:</strong> {{ .Status }}</p>
+          <p><strong>Severity:</strong> {{ .GroupLabels.severity }}</p>
+          <p><strong>Service:</strong> {{ .GroupLabels.service }}</p>
+          <p><strong>Instance:</strong> {{ .GroupLabels.instance }}</p>
+          <h3>Description:</h3>
+          <p>{{ range .Alerts }}{{ .Annotations.description }}{{ end }}</p>
+          <h3>Details:</h3>
+          <pre>{{ range .Alerts }}
+            Alert: {{ .Labels.alertname }}
+            Starts at: {{ .StartsAt }}
+            {{ if .Annotations.runbook_url }}Runbook: {{ .Annotations.runbook_url }}{{ end }}
+          {{ end }}</pre>
+
+  - name: 'critical-alerts'
+    slack_configs:
+      - channel: '#alerts-critical'
+        send_resolved: true
+        title: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+        text: |-
+          {{ range .Alerts }}
+          *Alert:* {{ .Labels.alertname }}
+          *Status:* {{ .Status }}
+          *Severity:* {{ .Labels.severity }}
+          *Service:* {{ .Labels.service }}
+          *Instance:* {{ .Labels.instance }}
+          *Description:* {{ .Annotations.description }}
+          *Starts at:* {{ .StartsAt }}
+          {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}{{ end }}
+          {{ end }}
+        color: 'danger'
+        username: 'Prometheus AlertManager'
+        icon_emoji: ':rotating_light:'
+    email_configs:
+      - to: 'ops-critical@yourdomain.com'
+        send_resolved: true
+        headers:
+          Subject: '🚨 CRITICAL Alert: {{ .GroupLabels.alertname }}'
+        html: |
+          <h2 style="color: red;">🚨 CRITICAL Alert: {{ .GroupLabels.alertname }}</h2>
+          <p><strong>Status:</strong> {{ .Status }}</p>
+          <p><strong>Severity:</strong> {{ .GroupLabels.severity }}</p>
+          <p><strong>Service:</strong> {{ .GroupLabels.service }}</p>
+          <p><strong>Instance:</strong> {{ .GroupLabels.instance }}</p>
+          <h3>Description:</h3>
+          <p>{{ range .Alerts }}{{ .Annotations.description }}{{ end }}</p>
+          <h3>Alerts:</h3>
+          <ul>
+          {{ range .Alerts }}
+          <li>
+            <strong>{{ .Labels.alertname }}</strong><br/>
+            Starts at: {{ .StartsAt }}<br/>
+            {{ if .Annotations.runbook_url }}<a href="{{ .Annotations.runbook_url }}">Runbook</a>{{ end }}
+          </li>
+          {{ end }}
+          </ul>
+
+  - name: 'warning-alerts'
+    email_configs:
+      - to: 'ops-warning@yourdomain.com'
+        send_resolved: true
+        headers:
+          Subject: '⚠️ Warning Alert: {{ .GroupLabels.alertname }}'
+        html: |
+          <h2 style="color: orange;">⚠️ Warning: {{ .GroupLabels.alertname }}</h2>
+          <p><strong>Status:</strong> {{ .Status }}</p>
+          <p><strong>Severity:</strong> {{ .GroupLabels.severity }}</p>
+          <p><strong>Service:</strong> {{ .GroupLabels.service }}</p>
+          <p><strong>Instance:</strong> {{ .GroupLabels.instance }}</p>
+          <h3>Description:</h3>
+          <p>{{ range .Alerts }}{{ .Annotations.description }}{{ end }}</p>
+          <h3>Details:</h3>
+          <pre>{{ range .Alerts }}{{ .Labels.alertname }} - Started: {{ .StartsAt }}{{ end }}</pre>
+    slack_configs:
+      - channel: '#alerts-warning'
+        send_resolved: true
+        title: '⚠️ WARNING: {{ .GroupLabels.alertname }}'
+        text: |-
+          {{ range .Alerts }}
+          *Alert:* {{ .Labels.alertname }}
+          *Status:* {{ .Status }}
+          *Description:* {{ .Annotations.description }}
+          *Instance:* {{ .Labels.instance }}
+          {{ end }}
+        color: 'warning'
+
+  - name: 'info-alerts'
+    slack_configs:
+      - channel: '#alerts-info'
+        send_resolved: false
+        title: 'ℹ️ INFO: {{ .GroupLabels.alertname }}'
+        text: |-
+          {{ range .Alerts }}
+          *Alert:* {{ .Labels.alertname }}
+          *Description:* {{ .Annotations.description }}
+          *Instance:* {{ .Labels.instance }}
+          {{ end }}
+        color: 'good'
+
+# Alert bastırma kuralları (inhibit rules)
+inhibit_rules:
+  # Eğer application down ise, diğer alertleri bastır
+  - source_match:
+      alertname: 'ApplicationDown'
+      severity: 'critical'
+    target_match_re:
+      severity: 'warning|info'
+    equal: ['instance', 'namespace']
+  
+  # Eğer critical alert varsa, aynı instance için warning'leri bastır
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['instance', 'alertname']
+
