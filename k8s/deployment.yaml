@@ -18,7 +18,7 @@ spec:
         version: v1
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port: "8080"
+        prometheus.io/port: "8081"
         prometheus.io/path: "/actuator/prometheus"
     spec:
       containers:
@@ -26,7 +26,7 @@ spec:
         image: spring-boot-prometheus-app:1.0.0
         imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: 8080
+        - containerPort: 8081
           name: http
           protocol: TCP
         env:
@@ -38,16 +38,16 @@ spec:
               fieldPath: metadata.namespace
         livenessProbe:
           httpGet:
-            path: /actuator/health/liveness
-            port: 8080
+            path: /actuator/health
+            port: 8081
           initialDelaySeconds: 60
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /actuator/health/readiness
-            port: 8080
+            path: /actuator/health
+            port: 8081
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 5
